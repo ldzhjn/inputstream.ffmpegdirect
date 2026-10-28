@@ -31,7 +31,9 @@ constexpr int OPEN_FLAGS = AVIO_FLAG_READ | AVIO_FLAG_NONBLOCK;
 constexpr int OPEN_RESULT = -123;
 
 int interruptToken = 0;
+AVIOContext outputSentinel{};
 int calls = 0;
+int openResult = OPEN_RESULT;
 const char* expectedUrl = nullptr;
 const char* expectedCa = nullptr;
 bool expectHttpOptions = false;
@@ -64,6 +66,7 @@ int OriginalOpen(AVFormatContext* context, AVIOContext** io, const char* url,
 {
   ++calls;
   Check(io != nullptr, "IO output pointer was not forwarded");
+  *io = &outputSentinel;
   Check(std::strcmp(url, expectedUrl) == 0, "URL was not forwarded");
   Check(flags == OPEN_FLAGS, "IO flags were changed");
   Check(context->interrupt_callback.callback == Interrupt, "Interrupt callback was changed");
@@ -77,7 +80,7 @@ int OriginalOpen(AVFormatContext* context, AVIOContext** io, const char* url,
   CheckOption(*options, "tls_verify", expectHttpOptions ? "1" : nullptr);
   CheckOption(*options, "headers", expectHttpOptions ? HEADERS : nullptr);
   CheckOption(*options, "user_agent", expectHttpOptions ? "TestAgent" : nullptr);
-  return OPEN_RESULT;
+  return openResult;
 }
 
 void InitializeContext(AVFormatContext& context)
@@ -119,8 +122,9 @@ void RunOpen(AVFormatContext& context, const char* url, const char* ca,
     const int before = calls;
     const int result = context.io_open(&context, &io, url, OPEN_FLAGS,
                                        mode == OptionsMode::NULL_POINTER ? nullptr : &options);
-    Check(result == OPEN_RESULT, "Original callback result was changed");
+    Check(result == openResult, "Original callback result was changed");
     Check(calls == before + 1, "Original callback was not called exactly once");
+    Check(io == &outputSentinel, "IO output pointer was not returned to the caller");
     if (mode != OptionsMode::NULL_POINTER)
       CheckOption(options, "ca_file", ca);
   }
@@ -161,6 +165,10 @@ int main()
     RunOpen(context, "https://test.invalid/custom", CUSTOM_CA_FILE, OptionsMode::CUSTOM_CA);
     RunOpen(context, "https://test.invalid/empty", CA_FILE, OptionsMode::EMPTY_DICTIONARY);
     RunOpen(context, "https://test.invalid/null", CA_FILE, OptionsMode::NULL_POINTER);
+
+    openResult = 0;
+    RunOpen(context, "https://test.invalid/success.m3u8", CA_FILE);
+    openResult = OPEN_RESULT;
 
     const auto installedCallback = context.io_open;
     void* const installedOpaque = context.opaque;
