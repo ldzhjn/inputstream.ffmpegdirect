@@ -35,3 +35,15 @@ set_target_properties(test_ffmpeg_stream_tls PROPERTIES
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/test-cacert.pem" "Readable CA path fixture\n")
 add_test(NAME ffmpeg_stream_tls
          COMMAND test_ffmpeg_stream_tls "${CMAKE_CURRENT_BINARY_DIR}/test-cacert.pem")
+
+find_package(Python3 3.8 REQUIRED COMPONENTS Interpreter)
+find_program(FFMPEG_EXECUTABLE ffmpeg)
+if(NOT FFMPEG_EXECUTABLE)
+  message(FATAL_ERROR "The HLS demux integration test requires a host ffmpeg executable")
+endif()
+add_test(NAME ffmpeg_stream_hls
+         COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/RunHlsDemuxTest.py"
+                 --ffmpeg "${FFMPEG_EXECUTABLE}"
+                 --test-binary $<TARGET_FILE:test_ffmpeg_stream_tls>
+                 --ca-file "${CMAKE_CURRENT_BINARY_DIR}/test-cacert.pem")
+set_tests_properties(ffmpeg_stream_hls PROPERTIES TIMEOUT 75)

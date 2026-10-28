@@ -18,8 +18,8 @@ caller-visible IO output, success and failure return values, protocol restrictio
 and interrupt callbacks; repeated configuration, copied child contexts and
 replacement contexts. Checks remain active in Release builds.
 
-These are callback and option-propagation tests. They do not make network
-requests, validate server certificate chains, or test playback.
+The helper tests callbacks and option propagation without making network
+requests, validating server certificate chains, or testing playback.
 
 An optional integration target also compiles the production `FFmpegStream.cpp`
 and its stream dependencies. It calls `FFmpegStream::Open()` with fast manifest
@@ -29,9 +29,18 @@ that both opens receive the CA configuration; the second open then returns an
 error to stop before media analysis. This covers the `ConfigureTlsIO()` call in
 the actual close/reallocate/reopen path.
 
-The integration target runs on POSIX hosts (macOS/Linux). It needs a C++20
-compiler, the Kodi SDK headers, and matching host `libavcodec` headers and
-libraries in addition to the helper dependencies.
+A second integration case lets FFmpeg's real HLS demuxer read a master playlist,
+child playlist, AES-128 key and encrypted MPEG-2 segment. A Python controller
+generates synthetic media using the host `ffmpeg` executable and serves only
+those four resources on `127.0.0.1` at an ephemeral port. The test checks that
+every demuxer I/O callback receives `ca_file`, and that the server received all
+four resource requests. The controller stops the server and removes the
+generated fixtures after the test.
+
+The integration targets run on POSIX hosts (macOS/Linux). They need a C++20
+compiler, the Kodi SDK headers, matching host FFmpeg 9 development libraries,
+Python 3.8 or newer, and a host `ffmpeg` executable with the `lavfi` color source,
+`mpeg2video` encoder and HLS muxer with AES-128 support.
 `KODI_INCLUDE_DIR` is the directory containing `kodi/AddonBase.h`:
 
 ```sh
@@ -41,6 +50,7 @@ cmake --build build-stream-tests
 ctest --test-dir build-stream-tests --output-on-failure
 ```
 
-The integration target enables the Apple embedded TLS setup on the host and
-supplies Kodi callbacks and a readable CA-path fixture. It does not require a
-running Kodi instance, contact a server, or validate a real certificate chain.
+Both integration cases enable the Apple embedded TLS setup on the host and
+supply Kodi callbacks and a readable CA-path fixture. The context-recreation
+case uses no network; the HLS case makes loopback HTTP requests only. Neither
+requires a running Kodi instance or validates a real TLS certificate chain.
