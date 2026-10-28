@@ -15,6 +15,7 @@
 #include "IManageDemuxPacket.h"
 
 #include <chrono>
+#include <cstdio>
 #include <ctime>
 #include <memory>
 #include <thread>
@@ -891,6 +892,7 @@ bool FFmpegStream::Open(bool fileinfo)
 bool FFmpegStream::OpenWithFFmpeg(const AVInputFormat* iformat, const AVIOInterruptCB& int_cb)
 {
   Log(LOGLEVEL_INFO, "%s - IO handled by FFmpeg's AVFormat", __FUNCTION__);
+  ConfigureTlsIO();
 
   // special stream type that makes avformat handle file opening
   // allows internal ffmpeg protocols to be used
@@ -955,6 +957,7 @@ bool FFmpegStream::OpenWithFFmpeg(const AVInputFormat* iformat, const AVIOInterr
       av_dict_free(&options);
       avformat_close_input(&m_pFormatContext);
       m_pFormatContext = avformat_alloc_context();
+      ConfigureTlsIO();
     }
 
     m_pFormatContext->interrupt_callback = int_cb;
@@ -973,6 +976,26 @@ bool FFmpegStream::OpenWithFFmpeg(const AVInputFormat* iformat, const AVIOInterr
   av_dict_free(&options);
 
   return true;
+}
+
+void FFmpegStream::ConfigureTlsIO()
+{
+#ifdef TARGET_DARWIN_EMBEDDED
+  // FFmpeg's GnuTLS backend needs Kodi's CA bundle on Apple embedded platforms.
+  const std::string caFile =
+      kodi::vfs::TranslateSpecialProtocol("special://xbmc/system/certs/cacert.pem");
+  std::FILE* caBundle = nullptr;
+  if (!caFile.empty() && caFile.compare(0, 10, "special://") != 0)
+    caBundle = std::fopen(caFile.c_str(), "rb");
+  if (caBundle)
+  {
+    std::fclose(caBundle);
+    m_tlsIo.Configure(m_pFormatContext, caFile);
+    Log(LOGLEVEL_DEBUG, "Using Kodi's CA bundle for FFmpeg HTTPS requests");
+  }
+  else
+    Log(LOGLEVEL_WARNING, "Kodi's CA bundle is unavailable for FFmpeg TLS verification");
+#endif
 }
 
 bool FFmpegStream::OpenWithCURL(const AVInputFormat* iformat)
