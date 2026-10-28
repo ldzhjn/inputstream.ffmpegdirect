@@ -13,3 +13,9 @@ set_target_properties(test_tls_io PROPERTIES
 target_include_directories(test_tls_io PRIVATE ../src/utils)
 target_link_libraries(test_tls_io PRIVATE PkgConfig::FFMPEG)
 add_test(NAME tls_io COMMAND test_tls_io)
+
+option(ENABLE_STREAM_INTEGRATION_TESTS
+       "Test FFmpegStream TLS setup using the Kodi SDK and host FFmpeg" OFF)
+if(ENABLE_STREAM_INTEGRATION_TESTS)
+  include(StreamIntegration.cmake)
+endif()
