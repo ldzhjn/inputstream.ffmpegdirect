@@ -1,7 +1,5 @@
 bz2
-nettle
 gas-preprocessor
-gnutls
 zlib
 libzvbi
 libxml2

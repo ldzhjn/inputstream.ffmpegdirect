@@ -5,7 +5,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -17,10 +17,10 @@ jobs:
             CC: clang
             CXX: clang++
     steps:
-    - name: Install autopoint & nasm
+    - name: Install build dependencies
       run: |
         sudo apt-get update -qq
-        sudo apt-get install -y autopoint nasm
+        sudo apt-get install -y autopoint nasm libssl-dev libjitterentropy3-dev libzstd-dev
     - name: Checkout Kodi repo
       uses: actions/checkout@v5
       with:
