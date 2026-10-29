@@ -9,7 +9,6 @@
 
 #include "../utils/HttpProxy.h"
 #include "../utils/Properties.h"
-#include "../utils/TlsIo.h"
 #include "BaseStream.h"
 #include "DemuxStream.h"
 #include "CurlInput.h"
@@ -123,7 +122,6 @@ private:
   bool Open(bool fileinfo);
   bool OpenWithFFmpeg(const AVInputFormat* iformat, const AVIOInterruptCB& int_cb);
   bool OpenWithCURL(const AVInputFormat* iformat);
-  void ConfigureTlsIO();
   AVDictionary* GetFFMpegOptionsFromInput();
   void ResetVideoStreams();
   double ConvertTimestamp(int64_t pts, int den, int num);
@@ -163,7 +161,6 @@ private:
   std::map<int, std::unique_ptr<DemuxParserFFmpeg>> m_parsers;
 
   AVIOContext* m_ioContext;
-  TlsIo m_tlsIo;
 
   bool     m_bMatroska;
   bool     m_bAVI;
